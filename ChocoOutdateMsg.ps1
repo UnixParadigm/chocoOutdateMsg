@@ -12,36 +12,36 @@ if ($PkgNum -eq 0) {
 } else {
 	$Messageboxbody = "Chocolatey has determined $PkgNum packages are outdated.`n`n"
 }
-## Load libs
+# Load libs
 Add-Type -AssemblyName PresentationCore,PresentationFramework
 
-## Put info in vars
+# Put info in vars
 $MessageboxTitle = "Chocolatey package update"
-$Packages = Get-Content "$env:TEMP\chocoOutdatedPackages"
-$Messageboxbody += $Packages -replace "\|false" -replace "\|true" -replace '^(.*?)\|','$1  ' -replace '(.*)\|(.*)','$1 => $2'
+$Packages = Get-Content "$env:TEMP\chocoOutdatedPackages" | Where-Object {$_ -notmatch 'install'}
+$Messageboxbody = $Packages -replace "\|false" -replace "\|true" -replace '^(.*?)\|','$1  ' -replace '(.*)\|(.*)',"`r`$1 => `$2"
 $Messageboxbody += "`n`nWould you like to update these packages?"
 
 ## Display formated msg of packages to update
 
-## Background the messagebox so we can run command to focus it
+# Background the messagebox so we can run command to focus it
 Start-Job -Name 'MessageBox' -ArgumentList $Messageboxbody, $MessageboxTitle -ScriptBlock {
 	Add-Type -AssemblyName PresentationCore,PresentationFramework
 	[System.Windows.MessageBox]::Show($args[0],$args[1],"YesNo","Question") | Out-String
-} | Out-Null
+}
 
-## Wait till messagebox window exists
+# Wait till messagebox window exists
 while([string]::IsNullOrEmpty($MessageBoxExists)) {
 	$MessageBoxExists = Get-Process | where {$_.mainWindowTitle -like "Chocolatey package update" }
 }
 
-## Focus messagebox window
+# Focus messagebox window
 $wshell = New-Object -ComObject wscript.shell
 $wshell.AppActivate($MessageboxTitle)
 
-## Wait and get answer from messagebox
+# Wait and get answer from messagebox
 $Answer = Wait-Job -Name 'MessageBox' | Receive-Job
 	
-## Update if desired
+# Update if desired
 if ($Answer.Contains("Yes")) {
 	Start-Process cmd -Argument "/c title Chocolatey package update && sudo choco upgrade all && timeout -1"
 }
